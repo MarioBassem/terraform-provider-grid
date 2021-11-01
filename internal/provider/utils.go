@@ -2,7 +2,6 @@ package provider
 
 import (
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/rmb"
 )
@@ -10,11 +9,11 @@ import (
 type NodeClientPool struct {
 	nodeClients map[uint32]*client.NodeClient
 
-	sub *substrate.Substrate
+	sub SubstrateClient
 	rmb rmb.Client
 }
 
-func NewNodeClient(sub *substrate.Substrate, rmb rmb.Client) *NodeClientPool {
+func NewNodeClient(sub SubstrateClient, rmb rmb.Client) *NodeClientPool {
 	return &NodeClientPool{
 		nodeClients: make(map[uint32]*client.NodeClient),
 		rmb:         rmb,
@@ -22,7 +21,7 @@ func NewNodeClient(sub *substrate.Substrate, rmb rmb.Client) *NodeClientPool {
 	}
 }
 
-func (k *NodeClientPool) getNodeClient(nodeID uint32) (*client.NodeClient, error) {
+func (k *NodeClientPool) getNodeClient(nodeID uint32) (client.NodeClientInterface, error) {
 	cl, ok := k.nodeClients[nodeID]
 	if ok {
 		return cl, nil

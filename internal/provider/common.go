@@ -17,10 +17,10 @@ import (
 )
 
 type NodeClientCollection interface {
-	getNodeClient(nodeID uint32) (*client.NodeClient, error)
+	getNodeClient(nodeID uint32) (client.NodeClientInterface, error)
 }
 
-func waitDeployment(ctx context.Context, nodeClient *client.NodeClient, deploymentID uint64, version int) error {
+func waitDeployment(ctx context.Context, nodeClient client.NodeClientInterface, deploymentID uint64, version int) error {
 	done := false
 	for start := time.Now(); time.Since(start) < 4*time.Minute; time.Sleep(1 * time.Second) {
 		done = true
@@ -142,7 +142,7 @@ func getDeploymentObjects(ctx context.Context, dls map[uint32]uint64, nc NodeCli
 	return res, nil
 }
 
-func isNodeUp(ctx context.Context, nc *client.NodeClient) error {
+func isNodeUp(ctx context.Context, nc client.NodeClientInterface) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

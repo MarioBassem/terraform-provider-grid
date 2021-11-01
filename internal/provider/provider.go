@@ -118,7 +118,7 @@ type apiClient struct {
 	rmb_proxy_url string
 	userSK        ed25519.PrivateKey
 	rmb           rmb.Client
-	sub           *substrate.Substrate
+	sub           SubstrateClient
 	identity      *substrate.Identity
 }
 

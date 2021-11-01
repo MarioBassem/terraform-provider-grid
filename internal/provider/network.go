@@ -102,7 +102,7 @@ func validatePublicNode(ctx context.Context, nodeID uint32, ncPool NodeClientCol
 	}
 	return nil
 }
-func getNodeFreeWGPort(ctx context.Context, nodeClient *client.NodeClient, nodeId uint32) (int, error) {
+func getNodeFreeWGPort(ctx context.Context, nodeClient client.NodeClientInterface, nodeId uint32) (int, error) {
 	rand.Seed(time.Now().UnixNano())
 	freeports, err := nodeClient.NetworkListWGPorts(ctx)
 	if err != nil {
@@ -148,7 +148,7 @@ func isPrivateIP(ip net.IP) bool {
 	return false
 }
 
-func getNodeEndpoint(ctx context.Context, nodeClient *client.NodeClient) (net.IP, error) {
+func getNodeEndpoint(ctx context.Context, nodeClient client.NodeClientInterface) (net.IP, error) {
 	publicConfig, err := nodeClient.NetworkGetPublicConfig(ctx)
 	log.Printf("publicConfig: %v\n", publicConfig)
 	log.Printf("publicConfig.IPv4: %v\n", publicConfig.IPv4)
