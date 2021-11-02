@@ -36,15 +36,6 @@ func (k *NodeClientPool) getNodeClient(nodeID uint32) (client.NodeClientInterfac
 	return cl, nil
 }
 
-func isIn(l []uint16, i uint16) bool {
-	for _, x := range l {
-		if i == x {
-			return true
-		}
-	}
-	return false
-}
-
 func isInByte(l []byte, i byte) bool {
 	for _, x := range l {
 		if i == x {

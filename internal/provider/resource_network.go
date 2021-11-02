@@ -344,7 +344,7 @@ func (k *NetworkDeployer) assignNodesWGPort(ctx context.Context, nodes []uint32)
 			if err != nil {
 				return errors.Wrap(err, "coudln't get node client")
 			}
-			port, err := getNodeFreeWGPort(ctx, cl, node)
+			port, err := getNodeFreeWGPort(ctx, cl)
 			if err != nil {
 				return errors.Wrap(err, "failed to get node free wg ports")
 			}

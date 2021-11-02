@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"log"
 	"net"
 
 	"github.com/pkg/errors"
@@ -34,6 +35,7 @@ func NewNodeClientMock(publicConfig PublicConfig, ifs map[string][]net.IP, wgPor
 }
 
 func (nc *NodeClientMock) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
+	log.Printf("contract id: %d\n", dl.ContractID)
 	for i := range dl.Workloads {
 		dl.Workloads[i].Result.State = gridtypes.StateOk
 	}
@@ -49,8 +51,8 @@ func (nc *NodeClientMock) DeploymentUpdate(ctx context.Context, dl gridtypes.Dep
 	return nil
 }
 
-func (nc *NodeClientMock) DeploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
-	dl, ok := nc.deployments[dl.ContractID]
+func (nc *NodeClientMock) DeploymentGet(ctx context.Context, contractID uint64) (gridtypes.Deployment, error) {
+	dl, ok := nc.deployments[contractID]
 	if !ok {
 		return gridtypes.Deployment{}, errors.New("deployment not found")
 	}

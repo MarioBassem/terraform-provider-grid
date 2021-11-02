@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	gormb "github.com/threefoldtech/go-rmb"
-	substrate "github.com/threefoldtech/substrate-client"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -26,6 +25,7 @@ func waitDeployment(ctx context.Context, nodeClient client.NodeClientInterface, 
 		done = true
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
+		log.Printf("why is this zero? %d\n", deploymentID)
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
 		if err != nil {
 			return err
@@ -47,19 +47,6 @@ func waitDeployment(ctx context.Context, nodeClient client.NodeClientInterface, 
 		}
 	}
 	return errors.New(fmt.Sprintf("waiting for deployment %d timedout", deploymentID))
-}
-
-func cancelDeployment(ctx context.Context, nc *client.NodeClient, sc *substrate.Substrate, identity substrate.Identity, id uint64) error {
-	err := sc.CancelContract(&identity, id)
-	if err != nil {
-		return errors.Wrap(err, "error cancelling contract")
-	}
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-	if err := nc.DeploymentDelete(ctx, id); err != nil {
-		return errors.Wrap(err, "error deleting deployment")
-	}
-	return nil
 }
 
 func startRmbIfNeeded(ctx context.Context, api *apiClient) {

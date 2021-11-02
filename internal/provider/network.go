@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -102,20 +103,34 @@ func validatePublicNode(ctx context.Context, nodeID uint32, ncPool NodeClientCol
 	}
 	return nil
 }
-func getNodeFreeWGPort(ctx context.Context, nodeClient client.NodeClientInterface, nodeId uint32) (int, error) {
+func getNodeFreeWGPort(ctx context.Context, nodeClient client.NodeClientInterface) (int, error) {
+	// TODO: check valid wg range [begin, end)
+	begin := 1
+	end := 65535
 	rand.Seed(time.Now().UnixNano())
-	freeports, err := nodeClient.NetworkListWGPorts(ctx)
+	usedPorts, err := nodeClient.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
-	log.Printf("reserved ports for node %d: %v\n", nodeId, freeports)
-	p := uint(rand.Intn(6000) + 2000)
-
-	for isIn(freeports, uint16(p)) {
-		p = uint(rand.Intn(6000) + 2000)
+	if len(usedPorts) >= end-begin {
+		return 0, fmt.Errorf("there are %d used ports", len(usedPorts))
 	}
-	log.Printf("Selected port for node %d is %d\n", nodeId, p)
-	return int(p), nil
+	sort.SliceStable(usedPorts, func(i, j int) bool {
+		return usedPorts[i] < usedPorts[j]
+	})
+	p := rand.Intn(end-begin) + begin
+	p %= (end - begin) - len(usedPorts)
+	last := 0
+	for _, v := range usedPorts {
+		if last+p+1 < int(v) {
+			return last + p + 1, nil
+		} else {
+			p -= int(v) - last - 1
+			last = int(v)
+		}
+	}
+	fmt.Printf("p: %d, last: %d\n", p, last)
+	return p + last + 1, nil
 }
 
 func isPrivateIP(ip net.IP) bool {
@@ -161,7 +176,9 @@ func getNodeEndpoint(ctx context.Context, nodeClient client.NodeClientInterface)
 		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
 			return ip, nil
 		}
-	} else if err == nil && publicConfig.IPv6.IP != nil {
+	}
+
+	if err == nil && publicConfig.IPv6.IP != nil {
 		ip := publicConfig.IPv6.IP
 		log.Printf("ip: %s, globalunicast: %t, privateIP: %t\n", ip.String(), ip.IsGlobalUnicast(), isPrivateIP(ip))
 		if ip.IsGlobalUnicast() && !isPrivateIP(ip) {
