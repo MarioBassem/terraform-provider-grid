@@ -2,12 +2,26 @@ package client
 
 import (
 	"context"
-	"log"
+	"encoding/json"
 	"net"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
+
+func CloneDeployment(orig *gridtypes.Deployment) gridtypes.Deployment {
+	origJSON, err := json.Marshal(orig)
+	if err != nil {
+		panic(err)
+	}
+
+	clone := &gridtypes.Deployment{}
+	if err = json.Unmarshal(origJSON, &clone); err != nil {
+		panic(err)
+	}
+
+	return *clone
+}
 
 type NodeClientInterface interface {
 	DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error
@@ -35,7 +49,7 @@ func NewNodeClientMock(publicConfig PublicConfig, ifs map[string][]net.IP, wgPor
 }
 
 func (nc *NodeClientMock) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
-	log.Printf("contract id: %d\n", dl.ContractID)
+	dl = CloneDeployment(&dl)
 	for i := range dl.Workloads {
 		dl.Workloads[i].Result.State = gridtypes.StateOk
 	}
@@ -44,10 +58,11 @@ func (nc *NodeClientMock) DeploymentDeploy(ctx context.Context, dl gridtypes.Dep
 }
 
 func (nc *NodeClientMock) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
-	nc.deployments[dl.ContractID] = dl
+	dl = CloneDeployment(&dl)
 	for i := range dl.Workloads {
 		dl.Workloads[i].Result.State = gridtypes.StateOk
 	}
+	nc.deployments[dl.ContractID] = dl
 	return nil
 }
 
@@ -56,7 +71,7 @@ func (nc *NodeClientMock) DeploymentGet(ctx context.Context, contractID uint64) 
 	if !ok {
 		return gridtypes.Deployment{}, errors.New("deployment not found")
 	}
-	return dl, nil
+	return CloneDeployment(&dl), nil
 }
 
 func (nc *NodeClientMock) DeploymentDelete(ctx context.Context, contractID uint64) error {
@@ -67,7 +82,6 @@ func (nc *NodeClientMock) DeploymentDelete(ctx context.Context, contractID uint6
 	for i := range dl.Workloads {
 		dl.Workloads[i].Result.State = gridtypes.StateDeleted
 	}
-	nc.deployments[dl.ContractID] = dl
 	return nil
 }
 

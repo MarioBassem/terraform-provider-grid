@@ -25,7 +25,6 @@ func waitDeployment(ctx context.Context, nodeClient client.NodeClientInterface, 
 		done = true
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		log.Printf("why is this zero? %d\n", deploymentID)
 		dl, err := nodeClient.DeploymentGet(sub, deploymentID)
 		if err != nil {
 			return err
@@ -322,7 +321,6 @@ func deployConsistentDeployments(ctx context.Context, oldDeployments map[uint32]
 			if err := dl.Sign(api.twin_id, api.userSK); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
-
 			if err := dl.Valid(); err != nil {
 				return currentDeployments, errors.Wrap(err, "deployment is invalid")
 			}
