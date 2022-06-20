@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0
-	github.com/golang/mock v1.4.4
+	github.com/golang/mock v1.6.0
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/terraform-plugin-docs v0.8.1
