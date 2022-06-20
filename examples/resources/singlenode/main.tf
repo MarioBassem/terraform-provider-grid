@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     grid = {
-      source = "threefoldtech/grid"
+      source = "threefoldtechdev.com/providers/grid"
     }
   }
 }
@@ -10,52 +10,58 @@ provider "grid" {
 }
 
 resource "grid_network" "net1" {
-    nodes = [8]
+    nodes = [34]
     ip_range = "10.1.0.0/16"
     name = "network"
     description = "newer network"
     add_wg_access = true
 }
 resource "grid_deployment" "d1" {
-  node = 8
+  node = 34
   network_name = grid_network.net1.name
-  ip_range = lookup(grid_network.net1.nodes_ip_range, 8, "")
+  ip_range = lookup(grid_network.net1.nodes_ip_range, 34, "")
+  disks{
+    name = "rootfs"
+    size = 9
+  }
   vms {
     name = "vm1"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
     cpu = 2 
-    publicip = true
     memory = 1024
     entrypoint = "/sbin/zinit init"
     env_vars = {
-      SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtCuUUCZGLZ4NoihAiUK8K0kSoTR1WgIaLQKqMdQ/99eocMLqJgQMRIp8lueFG7SpcgXVRzln8KNKZX1Hm8lcrXICr3dnTW/0bpEnF4QOGLYZ/qTLF5WmoCgKyJ6WO96GjWJBsZPads+RD0WeiijV7jj29lALsMAI8CuOH0pcYUwWsRX/I1z2goMPNRY+PBjknMYFXEqizfUXqUnpzF3w/bKe8f3gcrmOm/Dxh1nHceJDW52TJL/sPcl6oWnHZ3fY4meTiAS5NZglyBF5oKD463GJnMt/rQ1gDNl8E4jSJUArN7GBJntTYxFoFo6zxB1OsSPr/7zLfPG420+9saBu9yN1O9DlSwn1ZX+Jg0k7VFbUpKObaCKRmkKfLiXJdxkKFH/+qBoCCnM5hfYxAKAyQ3YCCP/j9wJMBkbvE1QJMuuoeptNIvSQW6WgwBfKIK0shsmhK2TDdk0AHEnzxPSkVGV92jygSLeZ4ur/MZqWDx/b+gACj65M3Y7tzSpsR76M= omar@omar-Predator-PT315-52"
+      SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtXFGwsXo3PR2iR1ex8Ko5d/+qj2oeMp6CBcfNwR8k03kPfEeMQVi3BU5dvx/O+fOSrN1vluEh0T+x9NmN7HM3APb5sWevCKDSAMTvr7oy2g6OyRLUbXdGpYEpy8Ne4F0X/7CrSBuX3oJjCARnCN8YL33g+YVMIhOuQK0ZU2dFufRQdog/0LmEuLE1Zvb52KyIRe/FB7J0u98bmxR/DBCPmJ3+QuAtNyxV972m1M0tF9fnI3u4bvQmSViSuiL6KqqrRu7VUS4v5MYGF9hBmIMzQfDXClTwlk7GamiZwAQi1aTKzyUnkEFMX51tL6mQ2rTu1hdEtuU/DhF9cjFYCoDLBkV8I8rKHR/X2kDmQqS2g6B5eSth/Fn3NQyiZ87h31SDSh4Rr/HmBSjiRXLP3nN/I2OajjclWB+3ECdIFs2J6gnQtLM5mWOLojGbhQPjhOwaUCKQadXBJDNnsENbboPtSGg20Mil4GulXEcD+qSeF6+ZVbZXWIHSVmGms0gTVus= mariobassem@Mario"
     }
     planetary = true
+    mounts{
+      disk_name = "rootfs"
+      mount_point = "/mnt/nonUsedMountToCopyRootFileSystemTo"
+    }
   }
   vms {
-    name = "anothervm"
+    name = "vm2"
     flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
-    cpu = 1
+    cpu = 2 
     memory = 1024
     entrypoint = "/sbin/zinit init"
     env_vars = {
-      SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtCuUUCZGLZ4NoihAiUK8K0kSoTR1WgIaLQKqMdQ/99eocMLqJgQMRIp8lueFG7SpcgXVRzln8KNKZX1Hm8lcrXICr3dnTW/0bpEnF4QOGLYZ/qTLF5WmoCgKyJ6WO96GjWJBsZPads+RD0WeiijV7jj29lALsMAI8CuOH0pcYUwWsRX/I1z2goMPNRY+PBjknMYFXEqizfUXqUnpzF3w/bKe8f3gcrmOm/Dxh1nHceJDW52TJL/sPcl6oWnHZ3fY4meTiAS5NZglyBF5oKD463GJnMt/rQ1gDNl8E4jSJUArN7GBJntTYxFoFo6zxB1OsSPr/7zLfPG420+9saBu9yN1O9DlSwn1ZX+Jg0k7VFbUpKObaCKRmkKfLiXJdxkKFH/+qBoCCnM5hfYxAKAyQ3YCCP/j9wJMBkbvE1QJMuuoeptNIvSQW6WgwBfKIK0shsmhK2TDdk0AHEnzxPSkVGV92jygSLeZ4ur/MZqWDx/b+gACj65M3Y7tzSpsR76M= omar@omar-Predator-PT315-52"
+      SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtXFGwsXo3PR2iR1ex8Ko5d/+qj2oeMp6CBcfNwR8k03kPfEeMQVi3BU5dvx/O+fOSrN1vluEh0T+x9NmN7HM3APb5sWevCKDSAMTvr7oy2g6OyRLUbXdGpYEpy8Ne4F0X/7CrSBuX3oJjCARnCN8YL33g+YVMIhOuQK0ZU2dFufRQdog/0LmEuLE1Zvb52KyIRe/FB7J0u98bmxR/DBCPmJ3+QuAtNyxV972m1M0tF9fnI3u4bvQmSViSuiL6KqqrRu7VUS4v5MYGF9hBmIMzQfDXClTwlk7GamiZwAQi1aTKzyUnkEFMX51tL6mQ2rTu1hdEtuU/DhF9cjFYCoDLBkV8I8rKHR/X2kDmQqS2g6B5eSth/Fn3NQyiZ87h31SDSh4Rr/HmBSjiRXLP3nN/I2OajjclWB+3ECdIFs2J6gnQtLM5mWOLojGbhQPjhOwaUCKQadXBJDNnsENbboPtSGg20Mil4GulXEcD+qSeF6+ZVbZXWIHSVmGms0gTVus= mariobassem@Mario"
     }
-  }
-}
-output "wg_config" {
-    value = grid_network.net1.access_wg_config
-}
-output "node1_zmachine1_ip" {
-    value = grid_deployment.d1.vms[0].ip
-}
-output "node1_zmachine2_ip" {
-    value = grid_deployment.d1.vms[1].ip
-}
-output "public_ip" {
-    value = grid_deployment.d1.vms[0].computedip
-}
+    planetary = true
 
-output "ygg_ip" {
-    value = grid_deployment.d1.vms[0].ygg_ip
+  }
+  vms {
+    name = "vm4"
+    flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+    
+    cpu = 2 
+    memory = 1024
+    entrypoint = "/sbin/zinit init"
+    env_vars = {
+      SSH_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCtXFGwsXo3PR2iR1ex8Ko5d/+qj2oeMp6CBcfNwR8k03kPfEeMQVi3BU5dvx/O+fOSrN1vluEh0T+x9NmN7HM3APb5sWevCKDSAMTvr7oy2g6OyRLUbXdGpYEpy8Ne4F0X/7CrSBuX3oJjCARnCN8YL33g+YVMIhOuQK0ZU2dFufRQdog/0LmEuLE1Zvb52KyIRe/FB7J0u98bmxR/DBCPmJ3+QuAtNyxV972m1M0tF9fnI3u4bvQmSViSuiL6KqqrRu7VUS4v5MYGF9hBmIMzQfDXClTwlk7GamiZwAQi1aTKzyUnkEFMX51tL6mQ2rTu1hdEtuU/DhF9cjFYCoDLBkV8I8rKHR/X2kDmQqS2g6B5eSth/Fn3NQyiZ87h31SDSh4Rr/HmBSjiRXLP3nN/I2OajjclWB+3ECdIFs2J6gnQtLM5mWOLojGbhQPjhOwaUCKQadXBJDNnsENbboPtSGg20Mil4GulXEcD+qSeF6+ZVbZXWIHSVmGms0gTVus= mariobassem@Mario"
+    }
+    planetary = true
+
+  }
 }
