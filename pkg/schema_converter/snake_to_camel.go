@@ -1,11 +1,13 @@
 package converter
 
 import (
+	"log"
 	"strings"
 	"unicode"
 )
 
 func ToCamelCase(s string) string {
+	log.Printf("before camel: %s", s)
 	ret := strings.Builder{}
 	cap := true
 	for i := range s {
@@ -22,5 +24,6 @@ func ToCamelCase(s string) string {
 		}
 		ret.WriteByte(b)
 	}
+	log.Printf("after camel: %s", ret.String())
 	return ret.String()
 }

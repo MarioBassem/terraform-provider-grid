@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	converter "github.com/threefoldtech/terraform-provider-grid/pkg/schema_converter"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -67,18 +68,13 @@ func (k *GatewayFQDNDeployer) Validate(ctx context.Context, sub subi.SubstrateEx
 }
 
 func (k *GatewayFQDNDeployer) Marshal(d *schema.ResourceData) {
-
+	converter.Encode(k, d)
+	converter.Encode(&k.Gw, d)
 	nodeDeploymentID := make(map[string]interface{})
 	for node, id := range k.NodeDeploymentID {
 		nodeDeploymentID[fmt.Sprintf("%d", node)] = int(id)
 	}
-
-	d.Set("node", k.Node)
-	d.Set("tls_passthrough", k.Gw.TLSPassthrough)
-	d.Set("backends", k.Gw.Backends)
-	d.Set("fqdn", k.Gw.FQDN)
 	d.Set("node_deployment_id", nodeDeploymentID)
-	d.SetId(k.ID)
 }
 func (k *GatewayFQDNDeployer) GenerateVersionlessDeployments(ctx context.Context) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)

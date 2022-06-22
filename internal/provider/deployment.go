@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/terraform-provider-grid/internal/node"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/deployer"
+	converter "github.com/threefoldtech/terraform-provider-grid/pkg/schema_converter"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/subi"
 	"github.com/threefoldtech/terraform-provider-grid/pkg/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -34,45 +35,17 @@ type DeploymentDeployer struct {
 }
 
 func getDeploymentDeployer(d *schema.ResourceData, apiClient *apiClient) (DeploymentDeployer, error) {
-	networkName := d.Get("network_name").(string)
-
-	disks := make([]workloads.Disk, 0)
-	for _, disk := range d.Get("disks").([]interface{}) {
-		data := workloads.GetDiskData(disk.(map[string]interface{}))
-		disks = append(disks, data)
-	}
-
-	zdbs := make([]workloads.ZDB, 0)
-	for _, zdb := range d.Get("zdbs").([]interface{}) {
-		data := workloads.GetZdbData(zdb.(map[string]interface{}))
-		zdbs = append(zdbs, data)
-	}
-
-	vms := make([]workloads.VM, 0)
-	for _, vm := range d.Get("vms").([]interface{}) {
-		data := workloads.NewVMFromSchema(vm.(map[string]interface{})).WithNetworkName(networkName)
-		vms = append(vms, *data)
-	}
-
-	qsfs := make([]workloads.QSFS, 0)
-	for _, q := range d.Get("qsfs").([]interface{}) {
-		data := workloads.NewQSFSFromSchema(q.(map[string]interface{}))
-		qsfs = append(qsfs, data)
-	}
 	pool := client.NewNodeClientPool(apiClient.rmb)
-	deploymentDeployer := DeploymentDeployer{
-		Id:          d.Id(),
-		Node:        uint32(d.Get("node").(int)),
-		Disks:       disks,
-		VMs:         vms,
-		QSFSs:       qsfs,
-		ZDBs:        zdbs,
-		IPRange:     d.Get("ip_range").(string),
-		NetworkName: networkName,
-		APIClient:   apiClient,
-		ncPool:      pool,
-		deployer:    deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true),
+
+	deploymentDeployer := DeploymentDeployer{}
+	converter.Decode(&deploymentDeployer, d)
+	for _, vm := range deploymentDeployer.VMs {
+		vm.NetworkName = deploymentDeployer.NetworkName
 	}
+	deploymentDeployer.Id = d.Id()
+	deploymentDeployer.APIClient = apiClient
+	deploymentDeployer.ncPool = pool
+	deploymentDeployer.deployer = deployer.NewDeployer(apiClient.identity, apiClient.twin_id, apiClient.grid_client, pool, true)
 	return deploymentDeployer, nil
 }
 
@@ -137,29 +110,11 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context)
 }
 
 func (d *DeploymentDeployer) Marshal(r *schema.ResourceData) {
-	vms := make([]interface{}, 0)
-	disks := make([]interface{}, 0)
-	zdbs := make([]interface{}, 0)
-	qsfs := make([]interface{}, 0)
-	for _, vm := range d.VMs {
-		vms = append(vms, vm.Dictify())
+	err := converter.Encode(d, r)
+	if err != nil {
+		log.Printf("error encoding: %+v", err)
 	}
-	for _, d := range d.Disks {
-		disks = append(disks, d.Dictify())
-	}
-	for _, zdb := range d.ZDBs {
-		zdbs = append(zdbs, zdb.Dictify())
-	}
-	for _, q := range d.QSFSs {
-		qsfs = append(zdbs, q.Dictify())
-	}
-	r.Set("vms", vms)
-	r.Set("zdbs", zdbs)
-	r.Set("disks", disks)
-	r.Set("qsfs", qsfs)
-	r.Set("node", d.Node)
-	r.Set("network_name", d.NetworkName)
-	r.SetId(d.Id)
+
 }
 
 func (d *DeploymentDeployer) GetOldDeployments(ctx context.Context) (map[uint32]uint64, error) {

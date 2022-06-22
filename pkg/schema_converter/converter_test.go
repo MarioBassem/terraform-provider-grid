@@ -1,65 +1,38 @@
 package converter
 
 import (
-	"reflect"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type Rdata struct {
-	data map[string]interface{}
-}
-
-func (r *Rdata) Get(key string) interface{} {
-	return r.data[key]
-}
-
-func (r *Rdata) Set(key string, value interface{}) error {
-	r.data[key] = value
-	return nil
-}
-
-type Deployment struct {
-	Id          string
-	Node        uint32
-	Disks       []Disk
-	ZDBs        []ZDB
-	VMs         []VM
-	UsedIPs     []string
-	NetworkName string
-}
-
-type ZDB struct {
-	Name        string
-	Password    string
-	Public      bool
-	Size        int
-	Description string
-	Mode        string
-	Ips         []string
-	Port        uint32
-	Namespace   string
-}
-
-type Disk struct {
-	Name        string
-	Size        int
-	Description string
+type DeploymentDeployer struct {
+	Id               string
+	Node             int16
+	Disks            []Disk
+	ZDBList          []ZDB
+	VMList           []VM
+	QSFSList         []QSFS
+	IPRange          string
+	NetworkName      string
+	FQDN             []GatewayFQDNProxy
+	GatewayNames     []GatewayNameProxy
+	NodeDeploymentID map[uint32]uint64
 }
 
 type VM struct {
 	Name          string
 	Flist         string
 	FlistChecksum string
-	Publicip      bool
-	Publicip6     bool
+	Publicip      bool //not PublicIP
+	Publicip6     bool //not PublicIP6
 	Planetary     bool
 	Corex         bool
-	Computedip    string
-	Computedip6   string
-	YggIp         string
-	Ip            string
+	Computedip    string //not ComputedIP
+	Computedip6   string //moded
+	YggIP         string
+	IP            string
 	Description   string
 	Cpu           int
 	Memory        int
@@ -68,7 +41,10 @@ type VM struct {
 	Mounts        []Mount
 	Zlogs         []Zlog
 	EnvVars       map[string]string
+
+	NetworkName string
 }
+
 type Mount struct {
 	DiskName   string
 	MountPoint string
@@ -78,56 +54,94 @@ type Zlog struct {
 	Output string
 }
 
-func getDeployment() Deployment {
-	dp := Deployment{}
+type Disk struct {
+	Name        string
+	Size        int
+	Description string
+}
+type ZDB struct {
+	Name        string
+	Password    string
+	Public      bool
+	Size        int
+	Description string
+	Mode        string
+	Ips         []string //Ips not IPs
+	Port        uint32
+	Namespace   string
+}
+
+type QSFS struct {
+	Name                 string
+	Description          string
+	Cache                int
+	MinimalShards        uint32
+	ExpectedShards       uint32
+	RedundantGroups      uint32
+	RedundantNodes       uint32
+	MaxZDBDataDirSize    uint32
+	EncryptionAlgorithm  string
+	EncryptionKey        string
+	CompressionAlgorithm string
+	Metadata             Metadata
+	Groups               Groups
+
+	MetricsEndpoint string
+}
+type Metadata struct {
+	Type                string
+	Prefix              string
+	EncryptionAlgorithm string
+	EncryptionKey       string
+	Backends            Backends
+}
+type Group struct {
+	Backends Backends
+}
+type Backend ZdbBackend
+type Groups []Group
+type Backends []Backend
+
+type ZdbBackend struct {
+	Address   string `json:"address" toml:"address"`
+	Namespace string `json:"namespace" toml:"namespace"`
+	Password  string `json:"password" toml:"password"`
+}
+
+type GatewayNameProxy struct {
+	// Name the fully qualified domain name to use (cannot be present with Name)
+	Name string
+
+	// Passthrough whether to pass tls traffic or not
+	TLSPassthrough bool
+
+	// Backends are list of backend ips
+	Backends []Backend
+
+	// FQDN deployed on the node
+	FQDN string
+}
+
+type GatewayFQDNProxy struct {
+	// Name the fully qualified domain name to use (cannot be present with Name)
+	Name string
+
+	// Passthrough whether to pass tls traffic or not
+	TLSPassthrough bool
+
+	// Backends are list of backend ips
+	Backends []Backend
+
+	// FQDN deployed on the node
+	FQDN string
+}
+
+func getDeployment() DeploymentDeployer {
+	dp := DeploymentDeployer{}
 	dp.Id = "1234"
-	dp.Node = 123456
+	dp.Node = int16(1)
 	dp.Disks = []Disk{{"d1", 5, "desc1"}, {"d2", 6, "desc2"}}
-	dp.NetworkName = "net1"
-	dp.UsedIPs = []string{"usedip1", "usedip2"}
-	dp.VMs = []VM{{
-		"vm1",
-		"flist1",
-		"flist_checksum1",
-		false,
-		false,
-		true,
-		false,
-		"computedip_1",
-		"computedip6_1",
-		"yggip1",
-		"ip1",
-		"desc1",
-		2,
-		5,
-		3,
-		"entrypoint1",
-		[]Mount{{"d1", "mp1"}, {"d2", "mp2"}},
-		[]Zlog{{"zlog1"}, {"zlog2"}},
-		map[string]string{"env1": "var1", "env2": "var2"},
-	},
-		{
-			"vm2",
-			"flist2",
-			"flist_checksum2",
-			true,
-			true,
-			false,
-			true,
-			"computedip_2",
-			"computedip6_2",
-			"yggip2",
-			"ip2",
-			"desc2",
-			5,
-			7,
-			4,
-			"entrypoint2",
-			[]Mount{{"d5", "mp5"}, {"d6", "mp6"}},
-			[]Zlog{{"zlog3"}, {"zlog4"}},
-			map[string]string{"env3": "var3", "env4": "var4"},
-		}}
-	dp.ZDBs = []ZDB{{
+	dp.ZDBList = []ZDB{{
 		"zdb1",
 		"pass1",
 		true,
@@ -148,15 +162,167 @@ func getDeployment() Deployment {
 			[]string{"ip3, ip4"},
 			5678,
 			"namespace2",
-		}}
+		},
+	}
+
+	dp.VMList = []VM{{
+		"vm1",
+		"flist1",
+		"flist_checksum1",
+		false,
+		false,
+		true,
+		false,
+		"computedip_1",
+		"computedip6_1",
+		"yggip1",
+		"ip1",
+		"desc1",
+		2,
+		5,
+		3,
+		"entrypoint1",
+		[]Mount{{"d1", "mp1"}, {"d2", "mp2"}},
+		[]Zlog{{"zlog1"}, {"zlog2"}},
+		map[string]string{"1": "var1", "2": "var2"},
+		"net1",
+	},
+		{
+			"vm2",
+			"flist2",
+			"flist_checksum2",
+			true,
+			true,
+			false,
+			true,
+			"computedip_2",
+			"computedip6_2",
+			"yggip2",
+			"ip2",
+			"desc2",
+			5,
+			7,
+			4,
+			"entrypoint2",
+			[]Mount{{"d5", "mp5"}, {"d6", "mp6"}},
+			[]Zlog{{"zlog3"}, {"zlog4"}},
+			map[string]string{"3": "var3", "4": "var4"},
+			"net2",
+		},
+	}
+	dp.QSFSList = []QSFS{
+		{
+			"name1",
+			"desc1",
+			1,
+			2,
+			3,
+			4,
+			5,
+			6,
+			"encalgo",
+			"key1",
+			"comalgo",
+			Metadata{
+				"tp1",
+				"pre1",
+				"encalgo",
+				"key1",
+				Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			},
+			Groups{
+				{
+					Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+				},
+				{
+					Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+				},
+			},
+			"endpoint1",
+		},
+		{
+			"name2",
+			"desc2",
+			1,
+			2,
+			3,
+			4,
+			5,
+			6,
+			"encalgo",
+			"key1",
+			"comalgo",
+			Metadata{
+				"tp1",
+				"pre1",
+				"encalgo",
+				"key1",
+				Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			},
+			Groups{
+				{
+					Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+				},
+				{
+					Backends{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+				},
+			},
+			"endpoint2",
+		},
+	}
+	dp.IPRange = "iprange"
+	dp.NetworkName = "net1"
+	dp.FQDN = []GatewayFQDNProxy{
+		{
+			"name1",
+			true,
+			[]Backend{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			"fqdn1",
+		},
+		{
+			"name2",
+			true,
+			[]Backend{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			"fqdn2",
+		},
+	}
+	dp.GatewayNames = []GatewayNameProxy{
+		{
+			"name1",
+			false,
+			[]Backend{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			"fqdn1",
+		},
+		{
+			"name2",
+			false,
+			[]Backend{{"add3", "ns3", "pss3"}, {"add4", "ns4", "pss4"}},
+			"fqdn2",
+		},
+	}
+	dp.NodeDeploymentID = map[uint32]uint64{1: 2}
+
 	return dp
 }
 
-func getFilledRD() Rdata {
-	rd := Rdata{}
+type ResourceData struct {
+	data map[string]interface{}
+}
+
+func (r *ResourceData) Get(key string) interface{} {
+	return r.data[key]
+}
+
+func (r *ResourceData) Set(key string, value interface{}) error {
+	r.data[key] = value
+	return nil
+}
+
+func getFilledResourceData() ResourceData {
+	rd := ResourceData{}
 	rd.data = map[string]interface{}{}
 	rd.Set("id", "1234")
-	rd.Set("node", uint32(123456))
+	rd.Set("node", 1)
 	rd.Set("disks", []interface{}{
 		map[string]interface{}{
 			"name":        "d1",
@@ -167,7 +333,7 @@ func getFilledRD() Rdata {
 			"size":        int(6),
 			"description": "desc2",
 		}})
-	rd.Set("zdbs", []interface{}{
+	rd.Set("zdb_list", []interface{}{
 		map[string]interface{}{
 			"name":        "zdb1",
 			"password":    "pass1",
@@ -176,7 +342,7 @@ func getFilledRD() Rdata {
 			"description": "desc1",
 			"mode":        "mod1",
 			"ips":         []interface{}{"ip1, ip2"},
-			"port":        uint32(1234),
+			"port":        int(1234),
 			"namespace":   "namespace1",
 		},
 		map[string]interface{}{
@@ -187,11 +353,11 @@ func getFilledRD() Rdata {
 			"description": "desc2",
 			"mode":        "mod2",
 			"ips":         []interface{}{"ip3, ip4"},
-			"port":        uint32(5678),
+			"port":        int(5678),
 			"namespace":   "namespace2",
 		},
 	})
-	rd.Set("vms", []interface{}{
+	rd.Set("vm_list", []interface{}{
 		map[string]interface{}{
 			"name":           "vm1",
 			"flist":          "flist1",
@@ -218,8 +384,9 @@ func getFilledRD() Rdata {
 					"disk_name":   "d2",
 					"mount_point": "mp2",
 				}},
-			"zlogs":    []interface{}{map[string]interface{}{"output": "zlog1"}, map[string]interface{}{"output": "zlog2"}},
-			"env_vars": map[string]interface{}{"env1": "var1", "env2": "var2"},
+			"zlogs":        []interface{}{map[string]interface{}{"output": "zlog1"}, map[string]interface{}{"output": "zlog2"}},
+			"env_vars":     map[string]interface{}{"1": "var1", "2": "var2"},
+			"network_name": "net1",
 		},
 		map[string]interface{}{
 			"name":           "vm2",
@@ -247,39 +414,254 @@ func getFilledRD() Rdata {
 					"disk_name":   "d6",
 					"mount_point": "mp6",
 				}},
-			"zlogs":    []interface{}{map[string]interface{}{"output": "zlog3"}, map[string]interface{}{"output": "zlog4"}},
-			"env_vars": map[string]interface{}{"env3": "var3", "env4": "var4"},
+			"zlogs":        []interface{}{map[string]interface{}{"output": "zlog3"}, map[string]interface{}{"output": "zlog4"}},
+			"env_vars":     map[string]interface{}{"3": "var3", "4": "var4"},
+			"network_name": "net2",
 		},
 	})
-	rd.Set("used_ips", []interface{}{"usedip1", "usedip2"})
+	rd.Set("qsfs_list", []interface{}{
+		map[string]interface{}{
+			"name":                  "name1",
+			"description":           "desc1",
+			"cache":                 int(1),
+			"minimal_shards":        int(2),
+			"expected_shards":       int(3),
+			"redundant_groups":      int(4),
+			"redundant_nodes":       int(5),
+			"max_zdb_data_dir_size": int(6),
+			"encryption_algorithm":  "encalgo",
+			"encryption_key":        "key1",
+			"compression_algorithm": "comalgo",
+			"metadata": map[string]interface{}{
+				"type":                 "tp1",
+				"prefix":               "pre1",
+				"encryption_algorithm": "encalgo",
+				"encryption_key":       "key1",
+				"backends": []interface{}{
+					map[string]interface{}{
+						"address":   "add3",
+						"namespace": "ns3",
+						"password":  "pss3",
+					},
+					map[string]interface{}{
+						"address":   "add4",
+						"namespace": "ns4",
+						"password":  "pss4",
+					},
+				},
+			},
+			"groups": []interface{}{
+				map[string]interface{}{
+					"backends": []interface{}{
+						map[string]interface{}{
+							"address":   "add3",
+							"namespace": "ns3",
+							"password":  "pss3",
+						},
+						map[string]interface{}{
+							"address":   "add4",
+							"namespace": "ns4",
+							"password":  "pss4",
+						},
+					},
+				},
+				map[string]interface{}{
+					"backends": []interface{}{
+						map[string]interface{}{
+							"address":   "add3",
+							"namespace": "ns3",
+							"password":  "pss3",
+						},
+						map[string]interface{}{
+							"address":   "add4",
+							"namespace": "ns4",
+							"password":  "pss4",
+						},
+					},
+				},
+			},
+			"metrics_endpoint": "endpoint1",
+		},
+		map[string]interface{}{
+			"name":                  "name2",
+			"description":           "desc2",
+			"cache":                 int(1),
+			"minimal_shards":        int(2),
+			"expected_shards":       int(3),
+			"redundant_groups":      int(4),
+			"redundant_nodes":       int(5),
+			"max_zdb_data_dir_size": int(6),
+			"encryption_algorithm":  "encalgo",
+			"encryption_key":        "key1",
+			"compression_algorithm": "comalgo",
+			"metadata": map[string]interface{}{
+				"type":                 "tp1",
+				"prefix":               "pre1",
+				"encryption_algorithm": "encalgo",
+				"encryption_key":       "key1",
+				"backends": []interface{}{
+					map[string]interface{}{
+						"address":   "add3",
+						"namespace": "ns3",
+						"password":  "pss3",
+					},
+					map[string]interface{}{
+						"address":   "add4",
+						"namespace": "ns4",
+						"password":  "pss4",
+					},
+				},
+			},
+			"groups": []interface{}{
+				map[string]interface{}{
+					"backends": []interface{}{
+						map[string]interface{}{
+							"address":   "add3",
+							"namespace": "ns3",
+							"password":  "pss3",
+						},
+						map[string]interface{}{
+							"address":   "add4",
+							"namespace": "ns4",
+							"password":  "pss4",
+						},
+					},
+				},
+				map[string]interface{}{
+					"backends": []interface{}{
+						map[string]interface{}{
+							"address":   "add3",
+							"namespace": "ns3",
+							"password":  "pss3",
+						},
+						map[string]interface{}{
+							"address":   "add4",
+							"namespace": "ns4",
+							"password":  "pss4",
+						},
+					},
+				},
+			},
+			"metrics_endpoint": "endpoint2",
+		},
+	})
+	rd.Set("ip_range", "iprange")
 	rd.Set("network_name", "net1")
+	rd.Set("fqdn", []interface{}{
+		map[string]interface{}{
+			"name":            "name1",
+			"tls_passthrough": true,
+			"backends": []interface{}{
+				map[string]interface{}{
+					"address":   "add3",
+					"namespace": "ns3",
+					"password":  "pss3",
+				},
+				map[string]interface{}{
+					"address":   "add4",
+					"namespace": "ns4",
+					"password":  "pss4",
+				},
+			},
+			"fqdn": "fqdn1",
+		},
+		map[string]interface{}{
+			"name":            "name2",
+			"tls_passthrough": true,
+			"backends": []interface{}{
+				map[string]interface{}{
+					"address":   "add3",
+					"namespace": "ns3",
+					"password":  "pss3",
+				},
+				map[string]interface{}{
+					"address":   "add4",
+					"namespace": "ns4",
+					"password":  "pss4",
+				},
+			},
+			"fqdn": "fqdn2",
+		},
+	})
+	rd.Set("gateway_names", []interface{}{
+		map[string]interface{}{
+			"name":            "name1",
+			"tls_passthrough": false,
+			"backends": []interface{}{
+				map[string]interface{}{
+					"address":   "add3",
+					"namespace": "ns3",
+					"password":  "pss3",
+				},
+				map[string]interface{}{
+					"address":   "add4",
+					"namespace": "ns4",
+					"password":  "pss4",
+				},
+			},
+			"fqdn": "fqdn1",
+		},
+		map[string]interface{}{
+			"name":            "name2",
+			"tls_passthrough": false,
+			"backends": []interface{}{
+				map[string]interface{}{
+					"address":   "add3",
+					"namespace": "ns3",
+					"password":  "pss3",
+				},
+				map[string]interface{}{
+					"address":   "add4",
+					"namespace": "ns4",
+					"password":  "pss4",
+				},
+			},
+			"fqdn": "fqdn2",
+		},
+	})
+	rd.Set("node_deployment_id", map[string]interface{}{
+		"1": 2,
+	})
 	return rd
 }
 
-func getEmptyRD() Rdata {
-	rd := Rdata{}
+func getEmptyResourceDeployment() ResourceData {
+	rd := ResourceData{}
 	rd.data = map[string]interface{}{}
 	rd.Set("id", "")
-	rd.Set("node", uint32(0))
-	rd.Set("disks", []map[string]interface{}{})
-	rd.Set("zdbs", []map[string]interface{}{})
-	rd.Set("vms", []map[string]interface{}{})
-	rd.Set("used_ips", []string{})
+	rd.Set("node", 0)
+	rd.Set("disks", []interface{}{})
+	rd.Set("zdb_list", []interface{}{})
+	rd.Set("vm_list", []interface{}{})
+	rd.Set("qsfs_list", []interface{}{})
+	rd.Set("ip_range", "")
 	rd.Set("network_name", "")
+	rd.Set("fqdn", []interface{}{})
+	rd.Set("gateway_names", "")
+	rd.Set("node_deployment_id", map[string]interface{}{})
 	return rd
 }
 
 func TestConverter(t *testing.T) {
+
 	dp := getDeployment()
-	rd := getFilledRD()
+	rd := getFilledResourceData()
 
-	newDP := Deployment{}
-	newRD := getEmptyRD()
+	newDP := DeploymentDeployer{}
+	newRD := getEmptyResourceDeployment()
 
-	Encode(dp, &newRD)
-	assert.Equal(t, true, reflect.DeepEqual(rd, newRD))
+	err := Encode(dp, &newRD)
+	if err != nil {
+		log.Printf("error in encoding: %+v", err)
+		assert.Equal(t, nil, err)
+	}
+	assert.Equal(t, rd, newRD)
 
-	Decode(&newDP, &rd)
-	assert.Equal(t, true, reflect.DeepEqual(newDP, dp))
+	err2 := Decode(&newDP, &rd)
+	if err2 != nil {
+		log.Printf("error in decoding: %+v", err2)
+		assert.Equal(t, nil, err2)
+	}
+	assert.Equal(t, dp, newDP)
 
 }
