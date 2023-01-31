@@ -54,10 +54,8 @@ release:
 changelog:
   skip: true
 
-  
-
 git:
-  tag_sort: -version:creatordate
+  tag_sort: taggerdate
 
 
 
