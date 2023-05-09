@@ -20,11 +20,6 @@ terraform {
 }
 ```
 
-
-
-
-
-
 ## Generating the docs
 
 ```bash
